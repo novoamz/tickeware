@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 import { Building2, X, CheckCircle, ChevronRight } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -10,6 +10,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const modalRef = ref(null)
 const form = ref({ name: '', taxId: '', address: '' })
 const error = ref('')
 
@@ -17,8 +18,9 @@ watch(() => props.isOpen, (open) => {
   if (open) {
     form.value = { name: props.initialData.name, taxId: props.initialData.taxId, address: props.initialData.address }
     error.value = ''
+    nextTick(() => modalRef.value?.focus())
   }
-})
+}, { immediate: true })
 
 function handleSave() {
   if (!form.value.name.trim()) {
@@ -31,17 +33,23 @@ function handleSave() {
 function handleKey(e) {
   if (e.key === 'Escape' && !props.isForced) emit('close', null)
 }
+
+function handleBackdropClick() {
+  if (!props.isForced) emit('close', null)
+}
 </script>
 
 <template>
   <div
     v-if="isOpen"
+    ref="modalRef"
+    tabindex="-1"
     class="fixed inset-0 z-50 flex items-center justify-center p-4"
     @keydown="handleKey"
   >
     <div
       class="absolute inset-0 bg-black/40 backdrop-blur-sm"
-      @click="!isForced && emit('close', null)"
+      @click="handleBackdropClick"
     />
 
     <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">

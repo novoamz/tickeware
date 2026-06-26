@@ -1,10 +1,16 @@
 <script setup>
 import { PlusCircle, User, FileText, Tag, ToggleLeft, ToggleRight } from 'lucide-vue-next'
+import { DEFAULT_TAX_RATE, PAYMENT_METHODS, TAX_RATE } from '../constants'
+import { uid } from '../utils'
+import FormField from './FormField.vue'
 import ItemRow from './ItemRow.vue'
 
-const PAYMENT_METHODS = ['Efectivo', 'Transferencia', 'Tarjeta de crédito', 'Tarjeta de débito', 'Cheque', 'Otro']
-
-const props = defineProps({ modelValue: Object })
+const props = defineProps({
+  modelValue: {
+    type: Object,
+    required: true,
+  },
+})
 const emit = defineEmits(['update:modelValue'])
 
 function update(patch) {
@@ -16,7 +22,7 @@ function setNested(section, field, value) {
 }
 
 function addItem() {
-  update({ items: [...props.modelValue.items, { id: Date.now(), description: '', quantity: '', unitPrice: 0 }] })
+  update({ items: [...props.modelValue.items, { id: uid(), description: '', quantity: '', unitPrice: 0 }] })
 }
 
 function updateItem(id, field, value) {
@@ -28,7 +34,7 @@ function removeItem(id) {
 }
 
 function toggleTax() {
-  update({ taxRate: props.modelValue.taxRate > 0 ? 0 : 16 })
+  update({ taxRate: props.modelValue.taxRate > 0 ? 0 : DEFAULT_TAX_RATE })
 }
 </script>
 
@@ -41,36 +47,25 @@ function toggleTax() {
         <p class="section-title mb-0">Datos del Cliente</p>
       </div>
       <div class="grid grid-cols-1 gap-3">
-        <div>
-          <label class="block text-xs text-gray-500 mb-1 font-medium">Nombre / Empresa</label>
-          <input
-            type="text"
-            :value="modelValue.client.name"
-            @input="setNested('client', 'name', $event.target.value)"
-            placeholder="Cliente Ejemplo"
-            class="input-field"
-          />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1 font-medium">RFC / NIT / Documento</label>
-          <input
-            type="text"
-            :value="modelValue.client.taxId"
-            @input="setNested('client', 'taxId', $event.target.value)"
-            placeholder="ID del cliente"
-            class="input-field"
-          />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1 font-medium">Dirección</label>
-          <textarea
-            rows="2"
-            :value="modelValue.client.address"
-            @input="setNested('client', 'address', $event.target.value)"
-            placeholder="Dirección del cliente"
-            class="input-field resize-none"
-          />
-        </div>
+        <FormField
+          label="Nombre / Empresa"
+          :model-value="modelValue.client.name"
+          placeholder="Cliente Ejemplo"
+          @update:model-value="setNested('client', 'name', $event)"
+        />
+        <FormField
+          label="RFC / NIT / Documento"
+          :model-value="modelValue.client.taxId"
+          placeholder="ID del cliente"
+          @update:model-value="setNested('client', 'taxId', $event)"
+        />
+        <FormField
+          as="textarea"
+          label="Dirección"
+          :model-value="modelValue.client.address"
+          placeholder="Dirección del cliente"
+          @update:model-value="setNested('client', 'address', $event)"
+        />
       </div>
     </div>
 
@@ -80,25 +75,18 @@ function toggleTax() {
         <p class="section-title mb-0">Detalles del Comprobante</p>
       </div>
       <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs text-gray-500 mb-1 font-medium">N° de Recibo</label>
-          <input
-            type="text"
-            :value="modelValue.meta.receiptNumber"
-            @input="setNested('meta', 'receiptNumber', $event.target.value)"
-            placeholder="001"
-            class="input-field"
-          />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-500 mb-1 font-medium">Fecha</label>
-          <input
-            type="date"
-            :value="modelValue.meta.date"
-            @input="setNested('meta', 'date', $event.target.value)"
-            class="input-field"
-          />
-        </div>
+        <FormField
+          label="N° de Recibo"
+          :model-value="modelValue.meta.receiptNumber"
+          placeholder="001"
+          @update:model-value="setNested('meta', 'receiptNumber', $event)"
+        />
+        <FormField
+          as="date"
+          label="Fecha"
+          :model-value="modelValue.meta.date"
+          @update:model-value="setNested('meta', 'date', $event)"
+        />
         <div class="col-span-2">
           <label class="block text-xs text-gray-500 mb-1 font-medium">Método de Pago</label>
           <select
@@ -166,9 +154,9 @@ function toggleTax() {
         <div class="relative w-36">
           <input
             type="number"
-            min="0"
-            max="100"
-            step="0.5"
+            :min="TAX_RATE.min"
+            :max="TAX_RATE.max"
+            :step="TAX_RATE.step"
             :value="modelValue.taxRate"
             @input="update({ taxRate: parseFloat($event.target.value) || 0 })"
             class="input-field pr-8"

@@ -1,23 +1,34 @@
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { redis, isConfigured } from '../lib/redis'
+import { uid } from '../utils'
+
+function toErrorState(error) {
+  return {
+    message: error.message || 'Error inesperado',
+    stack: error.stack,
+  }
+}
 
 export function useReceipts() {
   const receipts = ref([])
   const loading = ref(false)
   const saving = ref(false)
   const error = ref(null)
+  const controller = new AbortController()
+  let disposed = false
 
-  async function fetchReceipts() {
+  async function fetchReceipts(signal = controller.signal) {
     if (!isConfigured) return
     loading.value = true
     error.value = null
     try {
-      const list = await redis.listReceipts()
+      const list = await redis.listReceipts({ signal })
+      if (disposed || signal?.aborted) return
       receipts.value = list
     } catch (e) {
-      error.value = e.message
+      if (!signal?.aborted) error.value = toErrorState(e)
     } finally {
-      loading.value = false
+      if (!disposed && !signal?.aborted) loading.value = false
     }
   }
 
@@ -26,7 +37,7 @@ export function useReceipts() {
     saving.value = true
     error.value = null
     try {
-      const id = String(Date.now())
+      const id = uid()
       const receipt = {
         id,
         savedAt: Date.now(),
@@ -34,10 +45,10 @@ export function useReceipts() {
         data,
       }
       await redis.saveReceipt(receipt)
-      receipts.value = [receipt, ...receipts.value]
+      await fetchReceipts()
       return receipt
     } catch (e) {
-      error.value = e.message
+      error.value = toErrorState(e)
       throw e
     } finally {
       saving.value = false
@@ -50,12 +61,16 @@ export function useReceipts() {
       await redis.deleteReceipt(id)
       receipts.value = receipts.value.filter(r => r.id !== id)
     } catch (e) {
-      error.value = e.message
+      error.value = toErrorState(e)
       throw e
     }
   }
 
   onMounted(() => fetchReceipts())
+  onUnmounted(() => {
+    disposed = true
+    controller.abort()
+  })
 
   return {
     receipts,

@@ -17,6 +17,11 @@ function handleQtyChange(e) {
   const digits = e.target.value.replace(/[^0-9]/g, '')
   emit('change', props.item.id, 'quantity', digits === '' ? '' : parseInt(digits, 10))
 }
+
+function handleUnitPriceChange(e) {
+  const digits = e.target.value.replace(/[^0-9]/g, '')
+  emit('change', props.item.id, 'unitPrice', digits === '' ? 0 : parseInt(digits, 10))
+}
 </script>
 
 <template>
@@ -42,11 +47,10 @@ function handleQtyChange(e) {
     </td>
     <td class="py-2 px-2 w-36">
       <input
-        type="number"
-        min="0"
-        step="1"
+        type="text"
+        inputmode="numeric"
         :value="item.unitPrice"
-        @input="emit('change', item.id, 'unitPrice', parseInt($event.target.value, 10) || 0)"
+        @input="handleUnitPriceChange"
         placeholder="0"
         class="input-field text-right"
       />

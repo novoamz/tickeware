@@ -1,49 +1,28 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { FileText, History, CheckCircle, AlertCircle, Building2, Pencil } from 'lucide-vue-next'
+import { FileText, History, Building2, Pencil } from 'lucide-vue-next'
 import ReceiptForm from './components/ReceiptForm.vue'
 import ReceiptPreview from './components/ReceiptPreview.vue'
 import ReceiptHistory from './components/ReceiptHistory.vue'
 import IssuerSetup from './components/IssuerSetup.vue'
+import Toast from './components/Toast.vue'
 import { useReceipts } from './composables/useReceipts'
 import { useIssuer } from './composables/useIssuer'
+import { useToast } from './composables/useToast'
 import { isConfigured as redisConfigured } from './lib/redis'
-
-const blankReceipt = () => ({
-  issuer: { name: '', taxId: '', address: '' },
-  client: { name: '', taxId: '', address: '' },
-  meta: {
-    receiptNumber: '001',
-    date: new Date().toISOString().split('T')[0],
-    paymentMethod: 'Efectivo',
-  },
-  items: [{ id: Date.now(), description: '', quantity: '', unitPrice: 0 }],
-  taxRate: 0,
-})
+import { blankReceipt, uid } from './utils'
 
 const { issuer, saveIssuer, isConfigured: issuerConfigured } = useIssuer()
 const receiptData = ref({ ...blankReceipt(), issuer: { ...issuer.value } })
 const historyOpen = ref(false)
 const issuerOpen = ref(!issuerConfigured.value)
-const toast = ref(null)
+const { toast, showToast } = useToast()
 
 const { receipts, loading, saving, error, saveReceipt, deleteReceipt, refetch } = useReceipts()
 
 watch(issuer, (newIssuer) => {
   receiptData.value = { ...receiptData.value, issuer: { ...newIssuer } }
-}, { deep: true })
-
-let toastTimer = null
-watch(toast, (newToast) => {
-  if (toastTimer) clearTimeout(toastTimer)
-  if (newToast) {
-    toastTimer = setTimeout(() => { toast.value = null }, 3500)
-  }
 })
-
-function showToast(type, message) {
-  toast.value = { type, message }
-}
 
 function handleIssuerClose(data) {
   if (data) saveIssuer(data)
@@ -60,10 +39,11 @@ async function handleSave() {
 }
 
 function handleLoad(data) {
+  const { issuer: _issuer, ...rest } = data
   receiptData.value = {
-    ...data,
+    ...rest,
     issuer: { ...issuer.value },
-    items: data.items.map(item => ({ ...item, id: Date.now() + Math.random() })),
+    items: data.items.map(item => ({ ...item, id: uid() })),
   }
   showToast('success', 'Comprobante cargado en el formulario')
 }
@@ -90,27 +70,19 @@ function handleReset() {
           </span>
         </div>
 
-        <button
-          type="button"
-          @click="issuerOpen = true"
-          class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200
-                 hover:border-gray-300 hover:bg-gray-50 transition-all group max-w-xs"
-        >
-          <Building2 :size="13" class="text-gray-400 shrink-0" />
-          <span class="text-xs text-gray-600 font-medium truncate">
-            {{ issuerConfigured ? issuer.name : 'Configurar emisor…' }}
-          </span>
-          <Pencil :size="11" class="text-gray-300 group-hover:text-gray-500 shrink-0 transition-colors" />
-        </button>
-
         <div class="flex items-center gap-2 ml-auto">
           <button
             type="button"
             @click="issuerOpen = true"
-            class="sm:hidden p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+            class="flex items-center gap-2 p-2 sm:px-3 sm:py-1.5 rounded-lg border border-transparent sm:border-gray-200
+                   text-gray-400 hover:text-gray-600 hover:bg-gray-100 sm:hover:border-gray-300 transition-all group max-w-xs"
             title="Configurar emisor"
           >
-            <Building2 :size="16" />
+            <Building2 :size="16" class="sm:w-[13px] sm:h-[13px] shrink-0" />
+            <span class="hidden sm:inline text-xs text-gray-600 font-medium truncate">
+              {{ issuerConfigured ? issuer.name : 'Configurar emisor…' }}
+            </span>
+            <Pencil :size="11" class="hidden sm:block text-gray-300 group-hover:text-gray-500 shrink-0 transition-colors" />
           </button>
 
           <button
@@ -154,6 +126,7 @@ function handleReset() {
           <ReceiptPreview
             :data="receiptData"
             :saving="saving"
+            :hide-print="historyOpen"
             @save="handleSave"
           />
         </div>
@@ -179,19 +152,7 @@ function handleReset() {
       @refetch="refetch"
     />
 
-    <div
-      v-if="toast"
-      :class="[
-        'no-print fixed bottom-5 left-1/2 -translate-x-1/2 z-[60]',
-        'flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium',
-        'animate-fade-in whitespace-nowrap',
-        toast.type === 'success' ? 'bg-gray-800 text-white' : 'bg-red-600 text-white'
-      ]"
-    >
-      <CheckCircle v-if="toast.type === 'success'" :size="15" class="text-green-400" />
-      <AlertCircle v-else :size="15" class="text-red-200" />
-      {{ toast.message }}
-    </div>
+    <Toast v-if="toast" :toast="toast" />
 
   </div>
 </template>
