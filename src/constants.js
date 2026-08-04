@@ -17,4 +17,4 @@ export const TAX_RATE = {
 
 export const TOAST_DURATION = 3500
 
-export const REDIS_REQUEST_TIMEOUT_MS = 10000
+export const API_REQUEST_TIMEOUT_MS = 10000

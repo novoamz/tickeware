@@ -9,7 +9,6 @@ import Toast from './components/Toast.vue'
 import { useReceipts } from './composables/useReceipts'
 import { useIssuer } from './composables/useIssuer'
 import { useToast } from './composables/useToast'
-import { isConfigured as redisConfigured } from './lib/redis'
 import { blankReceipt, uid } from './utils'
 
 const { issuer, saveIssuer, isConfigured: issuerConfigured } = useIssuer()
@@ -18,7 +17,7 @@ const historyOpen = ref(false)
 const issuerOpen = ref(!issuerConfigured.value)
 const { toast, showToast } = useToast()
 
-const { receipts, loading, saving, error, saveReceipt, deleteReceipt, refetch } = useReceipts()
+const { receipts, loading, saving, error, apiReady, saveReceipt, deleteReceipt, refetch } = useReceipts()
 
 watch(issuer, (newIssuer) => {
   receiptData.value = { ...receiptData.value, issuer: { ...newIssuer } }
@@ -93,7 +92,7 @@ function handleReset() {
             <History :size="13" />
             Historial
             <span
-              v-if="redisConfigured && receipts.length > 0"
+              v-if="apiReady && receipts.length > 0"
               class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-gray-700 text-white
                      text-[10px] font-bold rounded-full flex items-center justify-center"
             >
@@ -146,6 +145,7 @@ function handleReset() {
       :receipts="receipts"
       :loading="loading"
       :error="error"
+      :api-ready="apiReady"
       @close="historyOpen = false"
       @load="handleLoad"
       @delete="deleteReceipt"

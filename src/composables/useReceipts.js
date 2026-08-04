@@ -1,6 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import { redis, isConfigured } from '../lib/redis'
-import { uid } from '../utils'
+import { api, isConfigured } from '../lib/api'
 
 function toErrorState(error) {
   return {
@@ -14,15 +13,34 @@ export function useReceipts() {
   const loading = ref(false)
   const saving = ref(false)
   const error = ref(null)
+  const apiReady = ref(false)
   const controller = new AbortController()
   let disposed = false
+
+  async function checkHealth(signal = controller.signal) {
+    if (!isConfigured) {
+      apiReady.value = false
+      return false
+    }
+    try {
+      const health = await api.health({ signal })
+      if (disposed || signal?.aborted) return false
+      apiReady.value = !!health?.redis
+      return apiReady.value
+    } catch {
+      if (!signal?.aborted) apiReady.value = false
+      return false
+    }
+  }
 
   async function fetchReceipts(signal = controller.signal) {
     if (!isConfigured) return
     loading.value = true
     error.value = null
     try {
-      const list = await redis.listReceipts({ signal })
+      const ready = apiReady.value || (await checkHealth(signal))
+      if (!ready || disposed || signal?.aborted) return
+      const list = await api.listReceipts({ signal })
       if (disposed || signal?.aborted) return
       receipts.value = list
     } catch (e) {
@@ -33,18 +51,13 @@ export function useReceipts() {
   }
 
   async function saveReceipt(data) {
-    if (!isConfigured) throw new Error('Upstash no configurado')
+    if (!isConfigured) throw new Error('API deshabilitada')
     saving.value = true
     error.value = null
     try {
-      const id = uid()
-      const receipt = {
-        id,
-        savedAt: Date.now(),
-        savedAtISO: new Date().toISOString(),
-        data,
-      }
-      await redis.saveReceipt(receipt)
+      const ready = apiReady.value || (await checkHealth())
+      if (!ready) throw new Error('Backend o Redis no configurado')
+      const receipt = await api.saveReceipt(data)
       await fetchReceipts()
       return receipt
     } catch (e) {
@@ -58,7 +71,7 @@ export function useReceipts() {
   async function deleteReceipt(id) {
     error.value = null
     try {
-      await redis.deleteReceipt(id)
+      await api.deleteReceipt(id)
       receipts.value = receipts.value.filter(r => r.id !== id)
     } catch (e) {
       error.value = toErrorState(e)
@@ -77,6 +90,7 @@ export function useReceipts() {
     loading,
     saving,
     error,
+    apiReady,
     saveReceipt,
     deleteReceipt,
     refetch: fetchReceipts,

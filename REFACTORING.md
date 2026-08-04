@@ -1,13 +1,15 @@
 # Informe de Refactorización — Tickeware
 
+> **Actualización 2026-08-04:** La persistencia ya no usa `src/lib/redis.js` (eliminado). El cliente es `src/lib/api.js` → API Express. Los hallazgos 3 y 4 sobre Redis en el browser están **obsoletos / resueltos**. Ver `MIGRATION.md` y `SECURITY-AUDIT-STATUS.md`.
+
 ## Resumen de Hallazgos
 
 | Prioridad | Problema | Archivo(s) | Impacto |
 |-----------|----------|------------|---------|
 | **1** | Template de comprobante duplicado ~120 líneas | `ReceiptPreview.vue`, `ReceiptHistory.vue` | Violación DRY, mantenimiento duplicado |
 | **2** | `formatDate()`, `calcSubtotal()`, `calcTotal()` duplicados | `ReceiptPreview.vue`, `ReceiptHistory.vue` | Código duplicado, implementaciones inconsistentes |
-| **3** | Sin timeout en peticiones Redis | `redis.js:6-18,20-32` | Hangs de red bloquean la UI indefinidamente |
-| **4** | Sin validación de estado HTTP en cliente Redis | `redis.js:15-17` | Fallos silenciosos en respuestas no-2xx |
+| **3** | ~~Sin timeout en peticiones Redis~~ | ~~`redis.js`~~ → `api.js` | **Resuelto** (timeout + AbortController) |
+| **4** | ~~Sin validación HTTP cliente Redis~~ | ~~`redis.js`~~ → `api.js` | **Resuelto** (`res.ok` + error body) |
 | **5** | Timer de toast sin limpieza al desmontar | `App.vue:36-42` | Fuga de memoria / closure obsoleto |
 | **6** | Números mágicos hardcodeados (tasa 16, toast 3500, etc.) | Múltiples archivos | Mala mantenibilidad |
 | **7** | `window.print()` asume global del navegador | `ReceiptPreview.vue:39`, `ReceiptHistory.vue:246` | Rompe en SSR |

@@ -1,6 +1,10 @@
 node_modules/
 dist/
+.env
 .env.local
 .env.*.local
 *.local
 .claude/
+backend/dist/
+backend/node_modules/
+backend/.env
