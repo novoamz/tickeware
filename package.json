@@ -14,7 +14,8 @@
     "check:migration": "node scripts/check-migration.mjs",
     "check:bundle": "node scripts/check-bundle.mjs",
     "test:api": "npm run test --prefix backend",
-    "postinstall": "npm install --prefix backend"
+    "postinstall": "npm install --prefix backend",
+    "op": "npm run build & npm run build:api & npm run dev:all"
   },
   "dependencies": {
     "lucide-vue-next": "^0.469.0",
