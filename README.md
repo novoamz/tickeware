@@ -24,7 +24,7 @@ El frontend **nunca** recibe el token de Redis. Las credenciales viven solo en `
 
 ## Requisitos
 
-- Node.js 18+
+- Node.js 20+
 
 ## Instalación
 
