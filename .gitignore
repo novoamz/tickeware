@@ -5,6 +5,3 @@ dist/
 .env.*.local
 *.local
 .claude/
-backend/dist/
-backend/node_modules/
-backend/.env

@@ -54,9 +54,9 @@ function toggleTax() {
           @update:model-value="setNested('client', 'name', $event)"
         />
         <FormField
-          label="RFC / NIT / Documento"
+          label="RUT"
           :model-value="modelValue.client.taxId"
-          placeholder="ID del cliente"
+          placeholder="RUT del cliente"
           @update:model-value="setNested('client', 'taxId', $event)"
         />
         <FormField

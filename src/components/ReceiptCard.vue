@@ -21,7 +21,6 @@ const now = computed(() => {
 
 const line = '─'.repeat(48)
 const doubleLine = '═'.repeat(48)
-const dash = '· · · · · · · · · · · · · · · · · · · · · · · · ·'
 </script>
 
 <template>

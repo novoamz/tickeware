@@ -2,4 +2,9 @@ import { createApp } from 'vue'
 import './index.css'
 import App from './App.vue'
 
-createApp(App).mount('#root')
+const root = document.getElementById('root')
+if (!root) {
+  console.error('Mount target #root not found')
+} else {
+  createApp(App).mount(root)
+}

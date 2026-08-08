@@ -5,17 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:api": "npm run dev --prefix backend",
-    "dev:all": "npm run dev:api & npm run dev",
     "build": "vite build",
-    "build:api": "npm run build --prefix backend",
-    "start:api": "npm run start --prefix backend",
-    "preview": "vite preview",
-    "check:migration": "node scripts/check-migration.mjs",
-    "check:bundle": "node scripts/check-bundle.mjs",
-    "test:api": "npm run test --prefix backend",
-    "postinstall": "npm install --prefix backend",
-    "op": "npm run build & npm run build:api & npm run dev:all"
+    "preview": "vite preview"
   },
   "dependencies": {
     "lucide-vue-next": "^0.469.0",

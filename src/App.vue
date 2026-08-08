@@ -17,7 +17,18 @@ const historyOpen = ref(false)
 const issuerOpen = ref(!issuerConfigured.value)
 const { toast, showToast } = useToast()
 
-const { receipts, loading, saving, error, apiReady, saveReceipt, deleteReceipt, refetch } = useReceipts()
+const {
+  receipts,
+  loading,
+  saving,
+  error,
+  storageReady,
+  storageSource,
+  redisWarning,
+  saveReceipt,
+  deleteReceipt,
+  refetch,
+} = useReceipts()
 
 watch(issuer, (newIssuer) => {
   receiptData.value = { ...receiptData.value, issuer: { ...newIssuer } }
@@ -31,7 +42,8 @@ function handleIssuerClose(data) {
 async function handleSave() {
   try {
     await saveReceipt(receiptData.value)
-    showToast('success', 'Comprobante guardado correctamente')
+    const localNote = storageSource.value === 'local' ? ' (solo en este dispositivo)' : ''
+    showToast('success', `Comprobante guardado correctamente${localNote}`)
   } catch (e) {
     showToast('error', e.message || 'Error al guardar')
   }
@@ -92,7 +104,7 @@ function handleReset() {
             <History :size="13" />
             Historial
             <span
-              v-if="apiReady && receipts.length > 0"
+              v-if="storageReady && receipts.length > 0"
               class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-gray-700 text-white
                      text-[10px] font-bold rounded-full flex items-center justify-center"
             >
@@ -145,7 +157,9 @@ function handleReset() {
       :receipts="receipts"
       :loading="loading"
       :error="error"
-      :api-ready="apiReady"
+      :storage-ready="storageReady"
+      :storage-source="storageSource"
+      :redis-warning="redisWarning"
       @close="historyOpen = false"
       @load="handleLoad"
       @delete="deleteReceipt"

@@ -97,7 +97,7 @@ function handleBackdropClick() {
 
         <div>
           <label class="block text-xs font-medium text-gray-500 mb-1">
-            RUT / NIT / ID Fiscal
+            RUT
           </label>
           <input
             type="text"

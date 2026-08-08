@@ -6,14 +6,17 @@ import {
 } from 'lucide-vue-next'
 import ReceiptCard from './ReceiptCard.vue'
 import { calcTotal, fmtCLP, formatSavedAt, printPage } from '../utils'
-import { isConfigured } from '../lib/api'
+import { isStorageAvailable, isRedisConfigured } from '../lib/storage'
 
 const props = defineProps({
   isOpen: Boolean,
   receipts: Array,
   loading: Boolean,
   error: { default: null },
-  apiReady: { type: Boolean, default: false },
+  storageReady: { type: Boolean, default: false },
+  /** 'redis' | 'local' | null */
+  storageSource: { type: String, default: null },
+  redisWarning: { type: String, default: null },
 })
 
 const emit = defineEmits(['close', 'load', 'delete', 'refetch'])
@@ -90,18 +93,38 @@ function receiptTotal(data) {
                w-full sm:w-80 xl:w-96"
         :class="selected ? 'hidden sm:flex' : 'flex'"
       >
-        <!-- Alertas -->
-        <div v-if="!isConfigured || !apiReady" class="m-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
+        <!-- Sin storage -->
+        <div v-if="!isStorageAvailable || !storageReady" class="m-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
           <div class="flex gap-2.5">
             <AlertCircle :size="15" class="text-amber-500 shrink-0 mt-0.5" />
             <div>
-              <p class="text-xs font-medium text-amber-800">
-                {{ !isConfigured ? 'API deshabilitada' : 'Backend o Redis no disponible' }}
-              </p>
+              <p class="text-xs font-medium text-amber-800">Almacenamiento no disponible</p>
               <p class="text-xs text-amber-600 mt-0.5 leading-relaxed">
-                Arranca la API con <code class="bg-amber-100 px-1 rounded">npm run dev:api</code>
-                y configura <code class="bg-amber-100 px-1 rounded">UPSTASH_*</code> en
-                <code class="bg-amber-100 px-1 rounded">backend/.env</code>.
+                Este navegador no soporta IndexedDB y Upstash no está configurado o no responde.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modo local (IndexedDB) -->
+        <div
+          v-else-if="storageSource === 'local'"
+          class="m-3 p-3 rounded-xl bg-sky-50 border border-sky-200"
+        >
+          <div class="flex gap-2.5">
+            <AlertCircle :size="15" class="text-sky-500 shrink-0 mt-0.5" />
+            <div>
+              <p class="text-xs font-medium text-sky-800">Modo local (IndexedDB)</p>
+              <p class="text-xs text-sky-700 mt-0.5 leading-relaxed">
+                <template v-if="redisWarning">
+                  Sin conexión a Upstash: {{ redisWarning }}. Los comprobantes se guardan en este dispositivo.
+                </template>
+                <template v-else-if="!isRedisConfigured">
+                  Upstash no está configurado. Los comprobantes se guardan en este dispositivo.
+                </template>
+                <template v-else>
+                  Usando almacenamiento local de este dispositivo.
+                </template>
               </p>
             </div>
           </div>
@@ -120,7 +143,7 @@ function receiptTotal(data) {
 
         <!-- Sin comprobantes -->
         <div
-          v-else-if="isConfigured && apiReady && !error && receipts.length === 0"
+          v-else-if="storageReady && !error && receipts.length === 0"
           class="flex-1 flex flex-col items-center justify-center gap-3 py-16 px-8 text-center"
         >
           <div class="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
@@ -179,7 +202,10 @@ function receiptTotal(data) {
         <!-- Footer -->
         <div class="px-4 py-3 border-t border-gray-100 bg-gray-50 shrink-0">
           <p class="text-[11px] text-gray-400 text-center">
-            API Tickeware &bull; Últimos 100 comprobantes
+            <template v-if="storageSource === 'redis'">Upstash Redis</template>
+            <template v-else-if="storageSource === 'local'">IndexedDB (local)</template>
+            <template v-else>Almacenamiento</template>
+            &bull; Últimos 100 comprobantes
           </p>
         </div>
       </div>

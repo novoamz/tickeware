@@ -1,5 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import { api, isConfigured } from '../lib/api'
+import { storage, isStorageAvailable, isRedisConfigured } from '../lib/storage'
 
 function toErrorState(error) {
   return {
@@ -13,53 +13,55 @@ export function useReceipts() {
   const loading = ref(false)
   const saving = ref(false)
   const error = ref(null)
-  const apiReady = ref(false)
+  /** 'redis' | 'local' | null */
+  const storageSource = ref(null)
+  /** Soft warning when using IDB because Redis failed */
+  const redisWarning = ref(null)
+  const storageReady = ref(isStorageAvailable)
   const controller = new AbortController()
   let disposed = false
 
-  async function checkHealth(signal = controller.signal) {
-    if (!isConfigured) {
-      apiReady.value = false
-      return false
-    }
-    try {
-      const health = await api.health({ signal })
-      if (disposed || signal?.aborted) return false
-      apiReady.value = !!health?.redis
-      return apiReady.value
-    } catch {
-      if (!signal?.aborted) apiReady.value = false
-      return false
-    }
+  function applyResultMeta({ source, redisError } = {}) {
+    storageSource.value = source || null
+    redisWarning.value = redisError || null
+    storageReady.value = true
   }
 
   async function fetchReceipts(signal = controller.signal) {
-    if (!isConfigured) return
+    if (!isStorageAvailable) {
+      storageReady.value = false
+      storageSource.value = null
+      return
+    }
     loading.value = true
     error.value = null
     try {
-      const ready = apiReady.value || (await checkHealth(signal))
-      if (!ready || disposed || signal?.aborted) return
-      const list = await api.listReceipts({ signal })
+      const result = await storage.listReceipts({ signal })
       if (disposed || signal?.aborted) return
-      receipts.value = list
+      applyResultMeta(result)
+      receipts.value = result.receipts
     } catch (e) {
-      if (!signal?.aborted) error.value = toErrorState(e)
+      if (!signal?.aborted) {
+        storageReady.value = false
+        storageSource.value = null
+        error.value = toErrorState(e)
+      }
     } finally {
       if (!disposed && !signal?.aborted) loading.value = false
     }
   }
 
   async function saveReceipt(data) {
-    if (!isConfigured) throw new Error('API deshabilitada')
+    if (!isStorageAvailable) {
+      throw new Error('No hay almacenamiento disponible')
+    }
     saving.value = true
     error.value = null
     try {
-      const ready = apiReady.value || (await checkHealth())
-      if (!ready) throw new Error('Backend o Redis no configurado')
-      const receipt = await api.saveReceipt(data)
+      const result = await storage.saveReceipt(data)
+      applyResultMeta(result)
       await fetchReceipts()
-      return receipt
+      return result.receipt
     } catch (e) {
       error.value = toErrorState(e)
       throw e
@@ -71,8 +73,9 @@ export function useReceipts() {
   async function deleteReceipt(id) {
     error.value = null
     try {
-      await api.deleteReceipt(id)
-      receipts.value = receipts.value.filter(r => r.id !== id)
+      const result = await storage.deleteReceipt(id)
+      applyResultMeta(result)
+      receipts.value = receipts.value.filter((r) => r.id !== id)
     } catch (e) {
       error.value = toErrorState(e)
       throw e
@@ -90,7 +93,10 @@ export function useReceipts() {
     loading,
     saving,
     error,
-    apiReady,
+    storageReady,
+    storageSource,
+    redisWarning,
+    isRedisConfigured,
     saveReceipt,
     deleteReceipt,
     refetch: fetchReceipts,
